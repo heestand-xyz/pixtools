@@ -11,8 +11,9 @@ let package = Package(
     dependencies: [
         .package(path: "../../../Frameworks/Production/LiveValues"),
         .package(path: "../../../Frameworks/Production/RenderKit"),
+        .package(path: "../../../Frameworks/Production/PixelKit"),
     ],
     targets: [
-        .target(name: "pixtools", dependencies: ["LiveValues"])
+        .target(name: "pixtools", dependencies: ["LiveValues", "RenderKit", "PixelKit"])
     ]
 )
