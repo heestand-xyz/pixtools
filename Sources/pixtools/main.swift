@@ -3,11 +3,10 @@ import LiveValues
 import RenderKit
 import PixelKit
 
-print("pixtools")
-
+let args = CommandLine.arguments
 let fm = FileManager.default
 
-let callURL: URL = URL(fileURLWithPath: CommandLine.arguments.first!)
+let callURL: URL = URL(fileURLWithPath: args[0])
 
 func getURL(_ path: String) -> URL {
     if path.starts(with: "/") {
@@ -15,9 +14,22 @@ func getURL(_ path: String) -> URL {
     }
     if path.starts(with: "~/") {
         let docsURL: URL = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
-        return docsURL.appendingPathComponent(path.replacingOccurrences(of: "~/", with: ""))
+        return docsURL.deletingLastPathComponent().appendingPathComponent(path.replacingOccurrences(of: "~/", with: ""))
     }
     return callURL.appendingPathComponent(path)
+}
+
+guard args.count - args.filter({ $0.starts(with: "--") }).count * 2 == 2 else {
+    print("pixtools <output> [--metalLib]")
+    exit(EXIT_FAILURE)
+}
+let outURL: URL = getURL(args[1])
+var isDir: ObjCBool = false
+let exists: Bool = fm.fileExists(atPath: outURL.path, isDirectory: &isDir)
+guard exists && isDir.boolValue else {
+    print("output is not a valid folder")
+    print(outURL.path)
+    exit(EXIT_FAILURE)
 }
 
 enum Arg: String {
@@ -31,7 +43,7 @@ enum Arg: String {
     }
 }
 var atArg: Arg?
-for (i, argStr) in CommandLine.arguments.enumerated() {
+for (i, argStr) in args.enumerated() {
     guard i > 0 else { continue }
     if let arg: Arg = atArg {
         arg.action(argStr)
@@ -44,28 +56,26 @@ for (i, argStr) in CommandLine.arguments.enumerated() {
     }
 }
 
+frameLoopRenderThread = .background
 PixelKit.main.render.engine.renderMode = .manual
 
+print("rendering...")
 
 let ply = PolygonPIX(at: ._1024)
 
+var img: NSImage!
 
 let group = DispatchGroup()
 group.enter()
 try! PixelKit.main.render.engine.manuallyRender {
-    let img: NSImage = ply.renderedImage!
+    img = ply.renderedImage!
     print("did render")
     group.leave()
 }
-//group.wait()
-group.notify(queue: .main) {
-    print("done")
-    exit(EXIT_SUCCESS)
-}
+group.wait()
 
-RunLoop.current.add(Timer(timeInterval: 1.0, repeats: false, block: { _ in
-    print("timeout")
-}), forMode: .common)
+let url: URL = outURL.appendingPathComponent("\(UUID().uuidString).png")
+let data: Data = NSBitmapImageRep(data: img.tiffRepresentation!)!.representation(using: .png, properties: [:])!
+try data.write(to: url)
 
-dispatchMain()
-print("final")
+print("done!")
