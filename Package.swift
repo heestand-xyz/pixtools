@@ -12,9 +12,9 @@ let package = Package(
 //        .package(url: "https://github.com/hexagons/LiveValues.git", from: "1.1.7"),
 //        .package(url: "https://github.com/hexagons/RenderKit.git", from: "0.3.3"),
 //        .package(url: "https://github.com/hexagons/PixelKit.git", from: "0.9.5"),
-        .package(path: "../../../Frameworks/Production/LiveValues"),
-        .package(path: "../../../Frameworks/Production/RenderKit"),
-        .package(path: "../../../Frameworks/Production/PixelKit"),
+        .package(path: "~/Code/Frameworks/Production/LiveValues"),
+        .package(path: "~/Code/Frameworks/Production/RenderKit"),
+        .package(path: "~/Code/Frameworks/Production/PixelKit"),
     ],
     targets: [
         .target(name: "pixtools", dependencies: ["LiveValues", "RenderKit", "PixelKit"])
