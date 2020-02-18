@@ -5,7 +5,20 @@ import PixelKit
 
 print("pixtools")
 
-// https://stackoverflow.com/questions/39815054/how-to-include-assets-resources-in-a-swift-package-manager-library
+let fm = FileManager.default
+
+let callURL: URL = URL(fileURLWithPath: CommandLine.arguments.first!)
+
+func getURL(_ path: String) -> URL {
+    if path.starts(with: "/") {
+        return URL(fileURLWithPath: path)
+    }
+    if path.starts(with: "~/") {
+        let docsURL: URL = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
+        return docsURL.appendingPathComponent(path.replacingOccurrences(of: "~/", with: ""))
+    }
+    return callURL.appendingPathComponent(path)
+}
 
 enum Arg: String {
     case metalLib = "--metalLib"
@@ -13,7 +26,7 @@ enum Arg: String {
         switch self {
         case .metalLib:
             print("argStr:", argStr)
-            pixelKitMetalLibURL = URL(fileURLWithPath: argStr)
+            pixelKitMetalLibURL = getURL(argStr)
         }
     }
 }
@@ -31,20 +44,28 @@ for (i, argStr) in CommandLine.arguments.enumerated() {
     }
 }
 
-print("pixelKitMetalLibURL:", pixelKitMetalLibURL?.path)
+PixelKit.main.render.engine.renderMode = .manual
 
-//PixelKit.main.render.engine.renderMode = .manual
-//
-//let ply = PolygonPIX(at: ._1024)
-//
-//
-////let group = DispatchGroup()
-////group.enter()
-//try! PixelKit.main.render.engine.manuallyRender {
-//    let img: NSImage = ply.renderedImage!
-//    print("did render")
-////    group.leave()
-//}
-////group.wait()
-//
-//print("final")
+
+let ply = PolygonPIX(at: ._1024)
+
+
+let group = DispatchGroup()
+group.enter()
+try! PixelKit.main.render.engine.manuallyRender {
+    let img: NSImage = ply.renderedImage!
+    print("did render")
+    group.leave()
+}
+//group.wait()
+group.notify(queue: .main) {
+    print("done")
+    exit(EXIT_SUCCESS)
+}
+
+RunLoop.current.add(Timer(timeInterval: 1.0, repeats: false, block: { _ in
+    print("timeout")
+}), forMode: .common)
+
+dispatchMain()
+print("final")
