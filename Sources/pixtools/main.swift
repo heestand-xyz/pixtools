@@ -55,7 +55,7 @@ enum Arg: CaseIterable {
     }
     var longFlag: String {
         switch self {
-        case .brigtness: return "brigtness"
+        case .brigtness: return "brightness"
         case .gamma: return "gamma"
         case .hue: return "hue"
         case .saturation: return "saturation"
