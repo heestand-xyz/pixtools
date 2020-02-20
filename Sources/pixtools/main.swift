@@ -144,14 +144,13 @@ for (i, argStr) in args.enumerated() {
 frameLoopRenderThread = .background
 PixelKit.main.render.engine.renderMode = .manual
 
-print("rendering...")
-
 guard let inImg: NSImage = NSImage(contentsOf: inURL) else {
     print("input image corrupt")
     print(outURL.path)
     exit(EXIT_FAILURE)
 }
 
+// MARK: - PIXs
 
 let img = ImagePIX()
 img.image = inImg
@@ -176,7 +175,9 @@ if let val: CGFloat = saturationVal {
 
 let fnl: PIX = hst
 
+// MARK: - Render
 
+print("will render")
 var outImg: NSImage!
 let group = DispatchGroup()
 group.enter()
