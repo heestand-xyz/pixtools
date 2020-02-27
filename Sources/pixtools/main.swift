@@ -19,19 +19,38 @@ func getURL(_ path: String) -> URL {
     return callURL.appendingPathComponent(path)
 }
 
-pixelKitMetalLibURL = getURL("~/Code/Frameworks/Production/PixelKit/Resources/Metal Libs/PixelKitShaders-macOS.metallib")
+var didSetup: Bool = false
+var didSetLib: Bool = false
 
-var brigtnessVal: CGFloat?
-var gammaVal: CGFloat?
-var hueVal: CGFloat?
-var saturationVal: CGFloat?
+func setup() {
+    guard didSetLib else { return }
+    guard !didSetup else { return }
+    frameLoopRenderThread = .background
+    PixelKit.main.render.engine.renderMode = .manual
+    #if DEBUG
+    PixelKit.main.logDebug()
+    #endif
+    didSetup = true
+}
+
+func setLib(url: URL) {
+    guard !didSetLib else { return }
+    guard fm.fileExists(atPath: url.path) else { return }
+    pixelKitMetalLibURL = url
+    didSetLib = true
+    setup()
+}
+setLib(url: getURL("~/Code/Frameworks/Production/PixelKit/Resources/Metal Libs/PixelKitShaders-macOS.metallib"))
+
+var finalResolution: Resolution?
+var effectAuto: AutoPIXSingleEffect?
+var effectPix: PIXSingleEffect?
 
 enum Arg: CaseIterable {
-    case brigtness
-    case gamma
-    case hue
-    case saturation
     case metalLib
+    case resolution
+    case effect
+    case property
     init?(shortFlag: String) {
         guard let arg: Arg = Arg.allCases.first(where: {
             $0.shortFlag == shortFlag || "-\($0.shortFlag)" == shortFlag
@@ -46,26 +65,26 @@ enum Arg: CaseIterable {
     }
     var shortFlag: String {
         switch self {
-        case .brigtness: return "b"
-        case .gamma: return "g"
-        case .hue: return "h"
-        case .saturation: return "s"
         case .metalLib: return "m"
+        case .resolution: return "r"
+        case .effect: return "e"
+        case .property: return "p"
         }
     }
     var longFlag: String {
         switch self {
-        case .brigtness: return "brightness"
-        case .gamma: return "gamma"
-        case .hue: return "hue"
-        case .saturation: return "saturation"
         case .metalLib: return "metallib"
+        case .resolution: return "resolution"
+        case .effect: return "effect"
+        case .property: return "property"
         }
     }
     var type: String {
         switch self {
-        case .brigtness, .gamma, .hue, .saturation: return "float"
         case .metalLib: return "path"
+        case .resolution: return "1920x1080"
+        case .effect: return "name"
+        case .property: return "name:float"
         }
     }
     var info: String {
@@ -74,25 +93,69 @@ enum Arg: CaseIterable {
     func action(_ argStr: String) {
         switch self {
         case .metalLib:
-            pixelKitMetalLibURL = getURL(argStr)
-        case .brigtness, .gamma, .hue, .saturation:
-            guard let val: Float = Float(argStr) else {
-                print("val \(argStr) for arg \(longFlag) needs to be a \(type)")
+            let url: URL = getURL(argStr)
+            setLib(url: url)
+            guard didSetLib else {
+                print("bad metal lib path")
+                print(url.path)
                 exit(EXIT_FAILURE)
             }
-            let cgVal: CGFloat = CGFloat(val)
-            switch self {
-            case .brigtness:
-                brigtnessVal = cgVal
-            case .gamma:
-                gammaVal = cgVal
-            case .hue:
-                hueVal = cgVal
-            case .saturation:
-                saturationVal = cgVal
-            default:
-                break
+        case .resolution:
+            let argParts: [String] = argStr.split(separator: "x").map({ "\($0)" })
+            guard argParts.count == 2 else {
+                print("resolution sign: <1920x1080>")
+                exit(EXIT_FAILURE)
             }
+            let wStr: String = argParts[0]
+            guard let w: Int = Int(wStr) else {
+                print("bad width value: \"\(wStr)\"")
+                print("the value needs to be a int")
+                exit(EXIT_FAILURE)
+            }
+            let hStr: String = argParts[1]
+            guard let h: Int = Int(hStr) else {
+                print("bad width height: \"\(hStr)\"")
+                print("the value needs to be a int")
+                exit(EXIT_FAILURE)
+            }
+            finalResolution = .custom(w: w, h: h)
+        case .effect:
+            guard let auto: AutoPIXSingleEffect = AutoPIXSingleEffect(rawValue: "\(argStr)pix") else {
+                print("no effect \"\(argStr)\"")
+                for auto in AutoPIXSingleEffect.allCases {
+                    print(auto.rawValue.replacingOccurrences(of: "pix", with: ""))
+                }
+                exit(EXIT_FAILURE)
+            }
+            effectAuto = auto
+            effectPix = auto.pixType.init()
+        case .property:
+            guard let auto = effectAuto,
+                let pix = effectPix else {
+                print("property requires effect")
+                exit(EXIT_FAILURE)
+            }
+            let argParts: [String] = argStr.split(separator: ":").map({ "\($0)" })
+            guard argParts.count == 2 else {
+                print("property sign: <name:float>")
+                exit(EXIT_FAILURE)
+            }
+            let name: String = argParts[0]
+            let properties = auto.allAutoLivePropertiesAsFloats(for: pix)
+            guard let property = properties.first(where: { $0.name == name }) else {
+                print("no effect property \"\(name)\"")
+                for property in properties {
+                    print(property.name)
+                }
+                exit(EXIT_FAILURE)
+            }
+            let valueStr: String = argParts[1]
+            guard let value: Float = Float(valueStr) else {
+                print("bad property value: \"\(valueStr)\"")
+                print("the value needs to be a float")
+                exit(EXIT_FAILURE)
+            }
+            property.value = LiveFloat(value)
         }
     }
 }
@@ -141,39 +204,32 @@ for (i, argStr) in args.enumerated() {
     }
 }
 
-frameLoopRenderThread = .background
-PixelKit.main.render.engine.renderMode = .manual
+// MARK: - PIXs
 
+var fnl: PIX & NODEOut
+
+let img = ImagePIX()
 guard let inImg: NSImage = NSImage(contentsOf: inURL) else {
     print("input image corrupt")
     print(outURL.path)
     exit(EXIT_FAILURE)
 }
-
-// MARK: - PIXs
-
-let img = ImagePIX()
 img.image = inImg
+fnl = img
 
-let lvl = LevelsPIX()
-lvl.input = img
-if let val: CGFloat = brigtnessVal {
-    lvl.brightness = LiveFloat(val)
-}
-if let val: CGFloat = gammaVal {
-    lvl.gamma = LiveFloat(val)
-}
-
-let hst = HueSaturationPIX()
-hst.input = lvl
-if let val: CGFloat = hueVal {
-    hst.hue = LiveFloat(val)
-}
-if let val: CGFloat = saturationVal {
-    hst.saturation = LiveFloat(val)
+if let resolution: Resolution = finalResolution {
+    let res = ResolutionPIX(at: resolution)
+    res.placement = .aspectFill
+    res.input = fnl
+    fnl = res
 }
 
-let fnl: PIX = hst
+if let pix: PIXSingleEffect = effectPix {
+    pix.input = fnl
+    fnl = pix
+}
+
+guard didSetup else { exit(EXIT_FAILURE) }
 
 // MARK: - Render
 

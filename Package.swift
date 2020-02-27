@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "pixtools",
     platforms: [
-        .macOS(.v10_12)
+        .macOS(.v10_15)
     ],
     dependencies: [
 //        .package(url: "https://github.com/hexagons/LiveValues.git", from: "1.1.7"),
