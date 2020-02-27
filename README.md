@@ -13,10 +13,13 @@ pixtools <input> <output>
 [-p | --property <name:float>]
 ~~~~
 
+## Install
+
+Add [pixtools](https://github.com/hexagons/pixtools/raw/master/pixtools) to `/usr/local/bin/`
 
 ## Example
 
-Brighten an image up to 200%:
+Brighten an image up to 200%
 
 ~~~~
 $ pixtools ~/in.png ~/out.png --metallib ~/PixelKitShaders-macOS.metallib --resolution 1024x1024 --effect levels -p brightness:2.0
@@ -29,7 +32,7 @@ You can find the Metal library [here](https://github.com/hexagons/PixelKit/tree/
 
 <img src="https://github.com/hexagons/pixtools/blob/master/Assets/in.jpg?raw=true" width="128"/>
 
-Source image.
+Source image
 
 ### Blur
 <img src="https://github.com/hexagons/pixtools/blob/master/Assets/effects/out_blur.jpg?raw=true" width="128"/>
