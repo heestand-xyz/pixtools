@@ -43,8 +43,17 @@ func setLib(url: URL) {
 setLib(url: getURL("~/Code/Frameworks/Production/PixelKit/Resources/Metal Libs/PixelKitShaders-macOS.metallib"))
 
 var finalResolution: Resolution?
-var effectAuto: AutoPIXSingleEffect?
-var effectPix: PIXSingleEffect?
+struct Effect {
+    let name: String
+    var auto: AutoPIXSingleEffect
+    var pix: PIXSingleEffect
+    init(_ auto: AutoPIXSingleEffect) {
+        name = auto.rawValue.replacingOccurrences(of: "pix", with: "")
+        self.auto = auto
+        pix = auto.pixType.init()
+    }
+}
+var effects: [Effect] = []
 
 enum Arg: CaseIterable {
     case metalLib
@@ -127,11 +136,9 @@ enum Arg: CaseIterable {
                 }
                 exit(EXIT_FAILURE)
             }
-            effectAuto = auto
-            effectPix = auto.pixType.init()
+            effects.append(Effect(auto))
         case .property:
-            guard let auto = effectAuto,
-                let pix = effectPix else {
+            guard let effect: Effect = effects.last else {
                 print("property requires effect")
                 exit(EXIT_FAILURE)
             }
@@ -141,9 +148,9 @@ enum Arg: CaseIterable {
                 exit(EXIT_FAILURE)
             }
             let name: String = argParts[0]
-            let properties = auto.allAutoLivePropertiesAsFloats(for: pix)
+            let properties = effect.auto.allAutoLivePropertiesAsFloats(for: effect.pix)
             guard let property = properties.first(where: { $0.name == name }) else {
-                print("no effect property \"\(name)\"")
+                print("no property \"\(name)\" for effect \"\(effect.name)\"")
                 for property in properties {
                     print(property.name)
                 }
@@ -224,9 +231,9 @@ if let resolution: Resolution = finalResolution {
     fnl = res
 }
 
-if let pix: PIXSingleEffect = effectPix {
-    pix.input = fnl
-    fnl = pix
+for effect in effects {
+    effect.pix.input = fnl
+    fnl = effect.pix
 }
 
 guard didSetup else { exit(EXIT_FAILURE) }
