@@ -119,14 +119,14 @@ $ ... --effect sharpen -p contrast:2
 $ ... --effect slope -p amplitude:256
 ~~~~
 
-### 
+### Threshold
 <img src="https://github.com/hexagons/pixtools/blob/master/Assets/effects/out_threshold.jpg?raw=true" width="128"/>
 
 ~~~~
 $ ... --effect threshold
 ~~~~
 
-### 
+### Twirl
 <img src="https://github.com/hexagons/pixtools/blob/master/Assets/effects/out_twirl.jpg?raw=true" width="128"/>
 
 ~~~~
